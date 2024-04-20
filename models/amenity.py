@@ -1,7 +1,18 @@
 #!/usr/bin/python3
 """ State Module for HBNB project """
-from models.base_model import BaseModel
+from models import HBNB_TYPE_STORAGE
+from models.base_model import BaseModel, Base
+from sqlalchemy import Column, String
 
 
-class Amenity(BaseModel):
-    name = ""
+class Amenity(BaseModel, Base):
+    __tablename__ = 'amenities'
+    __table_args__ = {'mysql_default_charset': 'latin1'}
+    if HBNB_TYPE_STORAGE == 'db':
+        name = Column(String(128), nullable=False)
+    else:
+        name = ""
+
+    def __init__(self, *args, **kwargs):
+        """Initialises Amenity"""
+        super().__init__(*args, **kwargs)
