@@ -1,58 +1,57 @@
 #!/usr/bin/python3
-"""Fabric script that generates a '.tgz' archive from the contents of the
-'web_static' folder of the AirBnB Clone repo
+"""
+Compress web static package
 """
 from fabric.api import *
+from datetime import datetime
 from os import path
-import re
 
-env.hosts = ['52.87.219.245', '18.208.120.8']
+
+env.hosts = ['100.27.4.8', '18.207.1.51']
 env.user = 'ubuntu'
+env.key_filename = '~/.ssh/id_rsa'
 
 
 def do_deploy(archive_path):
-    """Deploys an archive to my web server
+        """Deploy web files to server
+        """
+        try:
+                if not (path.exists(archive_path)):
+                        return False
 
-    Return:
-        False if the file at @archive_path doesn't exist, or True on success
-    """
+                # upload archive
+                put(archive_path, '/tmp/')
 
-    try:
-        # Check if @archive_path exists
-        if not path.exists(archive_path):
-            return False
+                # create target dir
+                timestamp = archive_path[-18:-4]
+                run('sudo mkdir -p /data/web_static/\
+releases/web_static_{}/'.format(timestamp))
 
-        # Transfer the archive from local to remote
-        put(archive_path, '/tmp/')
+                # uncompress archive and delete .tgz
+                run('sudo tar -xzf /tmp/web_static_{}.tgz -C \
+/data/web_static/releases/web_static_{}/'
+                    .format(timestamp, timestamp))
 
-        # Get the name of the file
-        file = re.split("/", archive_path)[-1]
-        tmp_path = ('/tmp/' + file)
+                # remove archive
+                run('sudo rm /tmp/web_static_{}.tgz'.format(timestamp))
 
-        # Get filename without the extension
-        # filename = re.split(".", file)[0]
-        filename = file[:-4]
+                # move contents into host web_static
+                run('sudo mv /data/web_static/releases/web_static_{}/web_static/* \
+/data/web_static/releases/web_static_{}/'.format(timestamp, timestamp))
 
-        # Uncompress the archive to the remote folder
+                # remove extraneous web_static dir
+                run('sudo rm -rf /data/web_static/releases/\
+web_static_{}/web_static'
+                    .format(timestamp))
 
-        dest = "/data/web_static/releases/" + filename
-        aa = run('ls /')
-        print(type(aa))
-        run('sudo mkdir -p {}'.format(dest))
-        run('sudo tar -xzf {} -C {}'.format(tmp_path, dest))
+                # delete pre-existing sym link
+                run('sudo rm -rf /data/web_static/current')
 
-        # Move extracted files in .../web_static to correct dir
-        run('sudo mv {}/web_static/* {}/'.format(dest, dest))
+                # re-establish symbolic link
+                run('sudo ln -s /data/web_static/releases/\
+web_static_{}/ /data/web_static/current'.format(timestamp))
+        except:
+                return False
 
-        # Delete the archive from the web server
-        run('sudo rm -rf {}'.format(tmp_path))
-
-        # Delete symbolic link and recreate a new one linked to the
-        # new version of code
-        run('sudo rm -rf /data/web_static/current')
-        new_symlink = '/data/web_static/releases/' + filename
-        run('sudo ln -s {} /data/web_static/current'.format(new_symlink))
-    except Exception as e:
-        return False
-
-    return True
+        # return True on success
+        return True

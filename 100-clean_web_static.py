@@ -1,38 +1,29 @@
 #!/usr/bin/python3
-"""Fabric script (based on '3-deploy_web_static.py') that deletes
-out-of-date archives, using the function 'do_clean'
-"""
-from os import listdir
-from fabric.api import cd, lcd, env, run, local
+import os
+from fabric.api import *
 
-env.hosts = ['52.87.219.245', '18.208.120.8']
-env.user = 'ubuntu'
+env.hosts = ['100.27.4.8', '18.207.1.51']
 
 
 def do_clean(number=0):
-    """Defines the clean-up process on the web servers
+    """Delete out-of-date archives.
 
     Args:
-        number (int) - the number of the archives, including the most recent,
-                       to keep.
+        number (int): The number of archives to keep.
+
+    If number is 0 or 1, keeps only the most recent archive. If
+    number is 2, keeps the most and second-most recent archives,
+    etc.
     """
-    if (int(number) <= 1):
-        number = 1
-    else:
-        number = int(number)
+    number = 1 if int(number) == 0 else int(number)
 
-    # Retrieve and sort files in the 'versions' directory
-    local_files = sorted(listdir('versions'))
+    archives = sorted(os.listdir("versions"))
+    [archives.pop() for i in range(number)]
+    with lcd("versions"):
+        [local("rm ./{}".format(a)) for a in archives]
 
-    # Make sure 'versions' directory if not empty
-    if len(local_files) == 0:
-        return
-    with lcd('versions'):
-        [local_files.pop() for i in range(number)]
-        [local('rm -rf ./{}'.format(tmp)) for tmp in local_files]
-
-    with cd('/data/web_static/releases'):
-        remote_files = run('ls -t ./').split()
-        remote_files = [f for f in remote_files if 'web_static' in f]
-        [remote_files.pop(0) for i in range(number)]
-        [run('sudo rm -rf ./{}'.format(tmp)) for tmp in remote_files]
+    with cd("/data/web_static/releases"):
+        archives = run("ls -tr").split()
+        archives = [a for a in archives if "web_static_" in a]
+        [archives.pop() for i in range(number)]
+        [run("rm -rf ./{}".format(a)) for a in archives]

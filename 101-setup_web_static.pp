@@ -1,80 +1,87 @@
-# Setup web server for deployment
+# Puppet for setup
 
-$html = "<html>
-  <head>
-  </head>
-  <body>
-    Holberton School
-  </body>
-</html>"
-
-$var="server {
-	listen 80 default_server;
-	listen [::]:80 default_server;
-
-	location /hbnb_static {
-	    alias /data/web_static/current;
-	    index index.html index.htm;
-	}
-
-	add_header X-Served-By ${hostname};
-
-	rewrite ^/redirect_me https://www.youtube.comwatch?v=QH2-TGU1\wu4 permanent;
+$nginx_conf = "server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    add_header X-Served-By ${hostname};
+    root   /var/www/html;
+    index  index.html index.htm;
+    location /hbnb_static {
+        alias /data/web_static/current;
+        index index.html index.htm;
+    }
+    location /redirect_me {
+        return 301 http://www.github.com/hunterxcobby/;
+    }
+    error_page 404 /404.html;
+    location /404 {
+      root /var/www/html;
+      internal;
+    }
 }"
 
-exec { 'Update':
-  path	   => ['/usr/bin', '/sbin', '/bin', '/usr/sbin'],
-  command  => 'sudo apt-get update -y',
-  provider => 'shell',
-  returns  => [0,1],
-} ->
-
 package { 'nginx':
-  ensure => 'present',
-} ->
+  ensure   => 'present',
+  provider => 'apt'
+}
 
-file { '/data':
-  ensure => 'directory',
-} ->
+-> file { '/data':
+  ensure  => 'directory'
+}
 
-file { '/data/web_static':
-  ensure => 'directory',
-} ->
+-> file { '/data/web_static':
+  ensure => 'directory'
+}
 
-file { '/data/web_static/releases':
-  ensure => 'directory',
-} ->
+-> file { '/data/web_static/releases':
+  ensure => 'directory'
+}
 
-file { '/data/web_static/releases/test':
-  ensure => 'directory',
-} ->
+-> file { '/data/web_static/releases/test':
+  ensure => 'directory'
+}
 
-file { '/data/web_static/shared':
-  ensure => 'directory',
-} ->
+-> file { '/data/web_static/shared':
+  ensure => 'directory'
+}
 
-file { '/data/web_static/releases/test/index.html':
+-> file { '/data/web_static/releases/test/index.html':
   ensure  => 'present',
-  content => $html,
-} ->
+  content => "this webpage is found in data/web_static/releases/test/index.htm \n"
+}
 
-file { '/data/web_static/current':
+-> file { '/data/web_static/current':
   ensure => 'link',
-  target => '/data/web_static/releases/test',
-  force  => 'yes',
-} ->
+  target => '/data/web_static/releases/test'
+}
 
-exec { 'permissions' :
-  path	  => ['/usr/bin', '/sbin', '/bin', '/usr/sbin', '/usr/local/bin'],
-  command => 'chown -R ubuntu:ubuntu /data/',
-  returns => [0,1],
-} ->
+-> exec { 'chown -R ubuntu:ubuntu /data/':
+  path => '/usr/bin/:/usr/local/bin/:/bin/'
+}
 
-file { '/etc/nginx/sites-available/default':
+file { '/var/www':
+  ensure => 'directory'
+}
+
+-> file { '/var/www/html':
+  ensure => 'directory'
+}
+
+-> file { '/var/www/html/index.html':
   ensure  => 'present',
-  content => $var,
-} ->
+  content => "This is my first upload  in /var/www/index.html***\n"
+}
 
-service { 'nginx':
-  ensure => 'running',
+-> file { '/var/www/html/404.html':
+  ensure  => 'present',
+  content => "Ceci n'est pas une page - Error page\n"
+}
+
+-> file { '/etc/nginx/sites-available/default':
+  ensure  => 'present',
+  content => $nginx_conf
+}
+
+-> exec { 'nginx restart':
+  path => '/etc/init.d/'
 }

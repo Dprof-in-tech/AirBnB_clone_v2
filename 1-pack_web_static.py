@@ -1,29 +1,30 @@
 #!/usr/bin/python3
-"""Fabric script that generates a '.tgz' archive from the contents of the
-'web_static' folder of the AirBnB Clone repo
 """
-from fabric.api import *
+Fabric script that generates a .tgz archive
+from the contents of the web_static folder
+"""
+from fabric.api import local
 from datetime import datetime
-import re
+import os
 
 
 def do_pack():
-    """Fab script to compress directory
+    """Generates a .tgz archive from the contents of the web_static folder"""
 
-    Return: path to created archive
-    """
-    # Get current time
-    dt = datetime.isoformat(datetime.now())
-    dt = re.split("[-T:.]", dt)
-    archive_name = "./versions/web_static_" + dt[0] + dt[1] + dt[2]
-    archive_name += dt[3] + dt[4] + dt[5] + '.tgz'
+    # Create the 'versions' directory if it doesn't exist
+    if not os.path.exists("versions"):
+        os.makedirs("versions")
 
-    # Create directory versions and compress web_static dir
-    local('mkdir -p versions')
-    result = local("tar -cvzf {} web_static".format(archive_name))
+    # Generate the archive path
+    now = datetime.now()
+    archive_path = "versions/web_static_{}{}{}{}{}{}.tgz".format(
+        now.year, now.month, now.day, now.hour, now.minute, now.second)
 
-    # Check if archiving failed
-    if (result.failed):
+    # Compress the web_static folder into a .tgz archive
+    result = local("tar -cvzf {} web_static".format(archive_path))
+
+    # Check if the compression was successful
+    if result.failed:
         return None
-
-    return (archive_name)
+    else:
+        return archive_path
